@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <title>Merci pour votre commande - DECOREO</title>
+  <meta name="robots" content="noindex,follow">
+  <meta name="description" content="Votre commande DECOREO a bien ete recue. Notre equipe vous contactera pour confirmation.">
+  <link rel="icon" type="image/png" href="assets/hkM7CCeZbN6uSnymzdw5KozXroCw75GZcYXaBkN3-0ccd1faf443c.png">
+  <link href="assets/decoreo-upgrade.css?v=38-instant-thank" rel="stylesheet">
+  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '170922824211294');
+  fbq('track', 'PageView');
+  </script>
+  <!-- End Meta Pixel Code -->
+</head>
+<body class="dx-thank-you-page">
+  <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=170922824211294&ev=PageView&noscript=1" alt=""></noscript>
+  <main class="dx-thank-you">
+    <a class="dx-thank-logo" href="index.html" aria-label="Retour a l'accueil DECOREO">
+      <img src="assets/jjy8xVBi2lqDTHTU42Qh7ggISVDTT6PuDfGQIt88-21ddecd3e287.png" alt="DECOREO">
+    </a>
+
+    <section class="dx-thank-card" aria-labelledby="thank-title">
+      <span class="dx-thank-check" aria-hidden="true">✓</span>
+      <p class="dx-thank-kicker">Commande recue</p>
+      <h1 id="thank-title">Merci, votre commande est bien envoyee.</h1>
+      <p class="dx-thank-copy">Notre equipe vous contactera rapidement par telephone pour confirmer les details avant la livraison.</p>
+
+      <div class="dx-thank-summary" aria-label="Resume de commande">
+        <div>
+          <span>Produit</span>
+          <strong id="thank-product">Commande DECOREO</strong>
+        </div>
+        <div>
+          <span>Total</span>
+          <strong id="thank-price">A confirmer</strong>
+        </div>
+      </div>
+
+      <div class="dx-thank-steps">
+        <article>
+          <b>01</b>
+          <strong>Confirmation par appel</strong>
+          <p>Nous verifions le produit, la taille et l'adresse.</p>
+        </article>
+        <article>
+          <b>02</b>
+          <strong>Livraison gratuite</strong>
+          <p>Votre commande est preparee apres confirmation.</p>
+        </article>
+        <article>
+          <b>03</b>
+          <strong>Paiement a la livraison</strong>
+          <p>Vous payez seulement a la reception.</p>
+        </article>
+      </div>
+
+      <div class="dx-thank-actions">
+        <a href="index.html">Retour a la boutique</a>
+        <a href="contact.html">Contacter DECOREO</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var stored = {};
+    try {
+      stored = JSON.parse(sessionStorage.getItem("decoreo_last_order") || localStorage.getItem("decoreo_last_order") || "{}");
+    } catch (error) {}
+
+    var product = params.get("product") || stored.produit || "Commande DECOREO";
+    var price = params.get("price") || stored.prix || "";
+    document.getElementById("thank-product").textContent = product;
+    document.getElementById("thank-price").textContent = price ? price + " DH" : "A confirmer";
+
+    var eventKey = "decoreo_purchase_sent_" + (stored.created_at || product + "_" + price);
+    if (stored.produit && !sessionStorage.getItem(eventKey)) {
+      sessionStorage.setItem(eventKey, "true");
+      if (typeof fbq === "function") {
+        fbq("track", "Purchase", {
+          content_name: stored.produit || product,
+          content_category: "Matelas",
+          currency: "MAD",
+          value: Number(stored.prix || price) || undefined
+        });
+      }
+    }
+  })();
+  </script>
+</body>
+</html>
