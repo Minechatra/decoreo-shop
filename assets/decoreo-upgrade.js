@@ -494,6 +494,7 @@
     saveBackup(order);
     savePendingOrder(order);
     showStatus(status, "ok", confirmationMessage);
+    trackMetaPurchase(order);
 
     if (endpoint) {
       syncPendingOrder(order.order_id, endpoint);
@@ -565,9 +566,9 @@
     });
   }
 
-  function trackMetaEvent(name, params) {
+  function trackMetaEvent(name, params, options) {
     if (typeof window.fbq !== "function") return;
-    window.fbq("track", name, params || {});
+    window.fbq("track", name, params || {}, options || {});
   }
 
   function trackMetaViewContent(product) {
@@ -580,11 +581,18 @@
   }
 
   function trackMetaPurchase(order) {
+    var orderId = order.order_id || createOrderId();
     trackMetaEvent("Purchase", {
       content_name: order.produit || document.title || "DECOREO",
       content_category: "Matelas",
+      content_ids: [order.produit || document.title || "DECOREO"],
+      content_type: "product",
       currency: "MAD",
-      value: Number(order.prix) || undefined
+      value: Number(order.prix) || 0,
+      num_items: Number(order.quantite) || 1,
+      order_id: orderId
+    }, {
+      eventID: orderId
     });
   }
 
