@@ -5,6 +5,7 @@
   normalizePageText();
   watchCurrencyText();
   enhanceImages();
+  retryPendingOrders();
   enhanceProductCards();
   addHomepageTrustSection();
   var productRoot = document.querySelector(".single-product");
@@ -469,7 +470,7 @@
     new MutationObserver(attach).observe(root, { childList: true, subtree: true });
   }
 
-  async function submitOrder(form, product) {
+  function submitOrder(form, product) {
     if (form.dataset.dxBusy === "true") return;
     form.dataset.dxBusy = "true";
     var button = form.querySelector("button[type='submit'], .single-submit") || document.querySelector(".single-submit");
@@ -478,42 +479,90 @@
     var endpoint = (window.DECOREO_SHEET_WEB_APP_URL || sheetEndpointFallback).trim();
     var confirmationMessage = "Merci, votre commande a bien ete recue. Notre equipe vous contactera rapidement pour confirmation.";
 
+    // Lock the action on the first click so double taps cannot create two orders.
+    setButton(button, true);
+
     var invalidField = getInvalidVisibleField(form);
     if (invalidField) {
       invalidField.focus();
       showStatus(status, "error", "Complete les champs obligatoires pour envoyer la commande.");
+      setButton(button, false);
       form.dataset.dxBusy = "false";
       return;
     }
 
-    setButton(button, true);
-    showStatus(status, "warn", "Envoi de la commande...");
     saveBackup(order);
+    savePendingOrder(order);
+    showStatus(status, "ok", confirmationMessage);
 
-    if (!endpoint) {
-      setButton(button, false);
-      showStatus(status, "ok", confirmationMessage);
-      completeOrder(form, order);
-      form.dataset.dxBusy = "false";
-      return;
+    if (endpoint) {
+      syncPendingOrder(order.order_id, endpoint);
     }
 
+    // Open the confirmation page without waiting for Google Sheets.
+    setTimeout(function () {
+      completeOrder(form, order);
+    }, 0);
+  }
+
+  function getPendingOrders() {
     try {
-      await fetch(endpoint, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(order)
-      });
-      showStatus(status, "ok", confirmationMessage);
-      completeOrder(form, order);
+      var value = JSON.parse(localStorage.getItem("decoreo_orders_pending") || "[]");
+      return Array.isArray(value) ? value : [];
     } catch (error) {
-      showStatus(status, "ok", confirmationMessage);
-      completeOrder(form, order);
-    } finally {
-      setButton(button, false);
-      form.dataset.dxBusy = "false";
+      return [];
     }
+  }
+
+  function storePendingOrders(records) {
+    try {
+      localStorage.setItem("decoreo_orders_pending", JSON.stringify(records));
+    } catch (error) {}
+  }
+
+  function savePendingOrder(order) {
+    var records = getPendingOrders();
+    if (records.some(function (record) { return record.order && record.order.order_id === order.order_id; })) return;
+    records.push({ order: order, attempts: 0, next_retry_at: 0 });
+    storePendingOrders(records);
+  }
+
+  function syncPendingOrder(orderId, endpoint) {
+    var records = getPendingOrders();
+    var record = records.find(function (item) { return item.order && item.order.order_id === orderId; });
+    if (!record || Number(record.next_retry_at || 0) > Date.now()) return;
+
+    // Avoid a duplicate retry while a keepalive request survives navigation.
+    record.attempts = Number(record.attempts || 0) + 1;
+    record.next_retry_at = Date.now() + 60000;
+    storePendingOrders(records);
+
+    fetch(endpoint, {
+      method: "POST",
+      mode: "no-cors",
+      keepalive: true,
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(record.order)
+    }).then(function () {
+      storePendingOrders(getPendingOrders().filter(function (item) {
+        return !item.order || item.order.order_id !== orderId;
+      }));
+    }).catch(function () {
+      var pending = getPendingOrders();
+      var failed = pending.find(function (item) { return item.order && item.order.order_id === orderId; });
+      if (failed) failed.next_retry_at = Date.now() + 15000;
+      storePendingOrders(pending);
+    });
+  }
+
+  function retryPendingOrders() {
+    var endpoint = (window.DECOREO_SHEET_WEB_APP_URL || sheetEndpointFallback).trim();
+    if (!endpoint) return;
+    getPendingOrders().forEach(function (record) {
+      if (!record.order || !record.order.order_id) return;
+      if (Number(record.next_retry_at || 0) > Date.now()) return;
+      syncPendingOrder(record.order.order_id, endpoint);
+    });
   }
 
   function trackMetaEvent(name, params) {
@@ -561,6 +610,7 @@
     var quantity = document.querySelector(".single-product input[name*='quantity'], .single-product .quantity input");
 
     return {
+      order_id: createOrderId(),
       created_at: new Date().toISOString(),
       status: "Nouveau",
       produit: product.name,
@@ -573,6 +623,13 @@
       details: JSON.stringify(data),
       page: location.href
     };
+  }
+
+  function createOrderId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
+    return "DX-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
   }
 
   function readProduct() {
@@ -683,8 +740,17 @@
 
   function saveBackup(order) {
     var key = "decoreo_orders_backup";
-    var orders = JSON.parse(localStorage.getItem(key) || "[]");
+    var orders;
+    try {
+      orders = JSON.parse(localStorage.getItem(key) || "[]");
+      if (!Array.isArray(orders)) orders = [];
+    } catch (error) {
+      orders = [];
+    }
+    if (orders.some(function (item) { return item.order_id === order.order_id; })) return;
     orders.push(order);
-    localStorage.setItem(key, JSON.stringify(orders));
+    try {
+      localStorage.setItem(key, JSON.stringify(orders));
+    } catch (error) {}
   }
 })();
