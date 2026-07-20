@@ -86,18 +86,7 @@
     document.getElementById("thank-product").textContent = product;
     document.getElementById("thank-price").textContent = price ? price + " DH" : "A confirmer";
 
-    var eventKey = "decoreo_purchase_sent_" + (stored.created_at || product + "_" + price);
-    if (stored.produit && !sessionStorage.getItem(eventKey)) {
-      sessionStorage.setItem(eventKey, "true");
-      if (typeof fbq === "function") {
-        fbq("track", "Purchase", {
-          content_name: stored.produit || product,
-          content_category: "Matelas",
-          currency: "MAD",
-          value: Number(stored.prix || price) || undefined
-        });
-      }
-    }
+
   })();
   </script>
 </body>
